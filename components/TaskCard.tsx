@@ -1,3 +1,6 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import { TaskWithAssignee, PREDEFINED_LABELS, PRIORITY_COLORS } from '@/lib/types';
 
 interface TaskCardProps {
@@ -5,6 +8,17 @@ interface TaskCardProps {
 }
 
 export default function TaskCard({ task }: TaskCardProps) {
+  const [customLabels, setCustomLabels] = useState<Array<{ name: string; color: string }>>([]);
+
+  // Load custom labels from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('customLabels');
+    if (stored) {
+      setCustomLabels(JSON.parse(stored));
+    }
+  }, []);
+
+  const allLabels = [...PREDEFINED_LABELS, ...customLabels];
   const labels = task.labels ? JSON.parse(task.labels) : [];
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'DONE';
 
@@ -19,7 +33,7 @@ export default function TaskCard({ task }: TaskCardProps) {
       {labels.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-3">
           {labels.map((label: string) => {
-            const labelConfig = PREDEFINED_LABELS.find(l => l.name === label);
+            const labelConfig = allLabels.find(l => l.name === label);
             return (
               <span
                 key={label}

@@ -18,6 +18,15 @@ export default function TaskDetailModal({ taskId, onClose, onUpdate, users }: Ta
   const [editedTask, setEditedTask] = useState<Partial<TaskWithDetails>>({});
   const [newComment, setNewComment] = useState('');
   const [addingComment, setAddingComment] = useState(false);
+  const [customLabels, setCustomLabels] = useState<Array<{ name: string; color: string }>>([]);
+
+  // Load custom labels from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('customLabels');
+    if (stored) {
+      setCustomLabels(JSON.parse(stored));
+    }
+  }, []);
 
   useEffect(() => {
     fetchTask();
@@ -102,6 +111,8 @@ export default function TaskDetailModal({ taskId, onClose, onUpdate, users }: Ta
       : [...labels, label];
     setEditedTask({ ...editedTask, labels: JSON.stringify(newLabels) });
   };
+
+  const allLabels = [...PREDEFINED_LABELS, ...customLabels];
 
   if (loading) {
     return (
@@ -233,7 +244,7 @@ export default function TaskDetailModal({ taskId, onClose, onUpdate, users }: Ta
             <label className="block text-sm font-medium text-gray-400 mb-2">Labels</label>
             {isEditing ? (
               <div className="flex flex-wrap gap-2">
-                {PREDEFINED_LABELS.map((label) => (
+                {allLabels.map((label) => (
                   <button
                     key={label.name}
                     onClick={() => toggleLabel(label.name)}
@@ -251,7 +262,7 @@ export default function TaskDetailModal({ taskId, onClose, onUpdate, users }: Ta
               <div className="flex flex-wrap gap-2">
                 {labels.length > 0 ? (
                   labels.map((label: string) => {
-                    const labelConfig = PREDEFINED_LABELS.find((l) => l.name === label);
+                    const labelConfig = allLabels.find((l) => l.name === label);
                     return (
                       <span
                         key={label}

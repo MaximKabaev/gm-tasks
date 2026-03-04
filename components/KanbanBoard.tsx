@@ -31,6 +31,10 @@ export default function KanbanBoard({
   const [tasks, setTasks] = useState<TaskWithAssignee[]>(initialTasks);
   const [isAddingTask, setIsAddingTask] = useState<string | null>(null);
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
+  const [customLabels, setCustomLabels] = useState<Array<{ name: string; color: string }>>([]);
+  const [isAddingLabel, setIsAddingLabel] = useState(false);
+  const [newLabelName, setNewLabelName] = useState('');
+  const [newLabelColor, setNewLabelColor] = useState('bg-blue-600');
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
@@ -44,6 +48,21 @@ export default function KanbanBoard({
   useEffect(() => {
     setTasks(initialTasks);
   }, [initialTasks]);
+
+  // Load custom labels from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('customLabels');
+    if (stored) {
+      setCustomLabels(JSON.parse(stored));
+    }
+  }, []);
+
+  // Save custom labels to localStorage when they change
+  useEffect(() => {
+    if (customLabels.length > 0) {
+      localStorage.setItem('customLabels', JSON.stringify(customLabels));
+    }
+  }, [customLabels]);
 
   const getTasksByStatus = (status: string) => {
     return tasks
@@ -70,6 +89,42 @@ export default function KanbanBoard({
 
   const clearFilters = () => {
     setSelectedLabels([]);
+  };
+
+  const allLabels = [...PREDEFINED_LABELS, ...customLabels];
+
+  const availableColors = [
+    'bg-blue-600',
+    'bg-indigo-600',
+    'bg-violet-600',
+    'bg-purple-600',
+    'bg-fuchsia-600',
+    'bg-pink-600',
+    'bg-rose-600',
+    'bg-red-600',
+    'bg-orange-600',
+    'bg-amber-600',
+    'bg-yellow-600',
+    'bg-lime-600',
+    'bg-green-600',
+    'bg-emerald-600',
+    'bg-teal-600',
+    'bg-cyan-600',
+  ];
+
+  const handleAddLabel = () => {
+    if (!newLabelName.trim()) return;
+
+    // Check if label already exists
+    if (allLabels.some(l => l.name.toLowerCase() === newLabelName.toLowerCase())) {
+      alert('A label with this name already exists');
+      return;
+    }
+
+    setCustomLabels([...customLabels, { name: newLabelName, color: newLabelColor }]);
+    setNewLabelName('');
+    setNewLabelColor('bg-blue-600');
+    setIsAddingLabel(false);
   };
 
   const handleDragEnd = async (result: DropResult) => {
@@ -176,7 +231,7 @@ export default function KanbanBoard({
       <div className="mb-6 bg-gray-900 rounded-lg p-4 border border-gray-800">
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-gray-400 text-sm font-medium">Filter by labels:</span>
-          {PREDEFINED_LABELS.map(label => (
+          {allLabels.map(label => (
             <button
               key={label.name}
               onClick={() => toggleLabel(label.name)}
@@ -189,6 +244,15 @@ export default function KanbanBoard({
               {label.name}
             </button>
           ))}
+          <button
+            onClick={() => setIsAddingLabel(true)}
+            className="p-1.5 bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white border border-gray-700 rounded transition-colors"
+            title="Add new label"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
           {selectedLabels.length > 0 && (
             <button
               onClick={clearFilters}
@@ -199,6 +263,73 @@ export default function KanbanBoard({
           )}
         </div>
       </div>
+
+      {/* Add Label Modal */}
+      {isAddingLabel && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setIsAddingLabel(false)}>
+          <div
+            className="bg-gray-900 rounded-lg p-6 max-w-md w-full border border-gray-800"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-xl font-bold text-white mb-4">Add New Label</h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Label Name</label>
+                <input
+                  type="text"
+                  value={newLabelName}
+                  onChange={(e) => setNewLabelName(e.target.value)}
+                  placeholder="e.g., documentation, testing..."
+                  autoFocus
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleAddLabel();
+                    if (e.key === 'Escape') setIsAddingLabel(false);
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Color</label>
+                <div className="grid grid-cols-8 gap-2">
+                  {availableColors.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setNewLabelColor(color)}
+                      className={`w-8 h-8 rounded ${color} ${
+                        newLabelColor === color ? 'ring-2 ring-white ring-offset-2 ring-offset-gray-900' : ''
+                      }`}
+                      title={color}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={handleAddLabel}
+                  disabled={!newLabelName.trim()}
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded font-medium transition-colors"
+                >
+                  Add Label
+                </button>
+                <button
+                  onClick={() => {
+                    setIsAddingLabel(false);
+                    setNewLabelName('');
+                    setNewLabelColor('bg-blue-600');
+                  }}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {columns.map(column => {
@@ -289,7 +420,7 @@ export default function KanbanBoard({
                     <div>
                       <label className="block text-xs text-gray-400 mb-1">Labels</label>
                       <div className="flex flex-wrap gap-1">
-                        {PREDEFINED_LABELS.map((label) => (
+                        {allLabels.map((label) => (
                           <button
                             key={label.name}
                             type="button"
