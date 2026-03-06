@@ -31,6 +31,7 @@ export default function KanbanBoard({
   const [tasks, setTasks] = useState<TaskWithAssignee[]>(initialTasks);
   const [isAddingTask, setIsAddingTask] = useState<string | null>(null);
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
+  const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
   const [customLabels, setCustomLabels] = useState<Array<{ name: string; color: string }>>([]);
   const [isAddingLabel, setIsAddingLabel] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
@@ -69,12 +70,19 @@ export default function KanbanBoard({
       .filter(task => {
         if (task.status !== status) return false;
 
-        // If no filters selected, show all tasks
-        if (selectedLabels.length === 0) return true;
+        // Filter by labels
+        if (selectedLabels.length > 0) {
+          const taskLabels = task.labels ? JSON.parse(task.labels) : [];
+          if (!selectedLabels.some(selectedLabel => taskLabels.includes(selectedLabel))) return false;
+        }
 
-        // Parse task labels and check if any selected label matches
-        const taskLabels = task.labels ? JSON.parse(task.labels) : [];
-        return selectedLabels.some(selectedLabel => taskLabels.includes(selectedLabel));
+        // Filter by assignees
+        if (selectedAssignees.length > 0) {
+          const assigneeId = task.assigneeId || 'unassigned';
+          if (!selectedAssignees.includes(assigneeId)) return false;
+        }
+
+        return true;
       })
       .sort((a, b) => a.position - b.position);
   };
@@ -87,9 +95,20 @@ export default function KanbanBoard({
     );
   };
 
+  const toggleAssignee = (assigneeId: string) => {
+    setSelectedAssignees(prev =>
+      prev.includes(assigneeId)
+        ? prev.filter(a => a !== assigneeId)
+        : [...prev, assigneeId]
+    );
+  };
+
   const clearFilters = () => {
     setSelectedLabels([]);
+    setSelectedAssignees([]);
   };
+
+  const hasActiveFilters = selectedLabels.length > 0 || selectedAssignees.length > 0;
 
   const allLabels = [...PREDEFINED_LABELS, ...customLabels];
 
@@ -228,9 +247,9 @@ export default function KanbanBoard({
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
       {/* Filter Bar */}
-      <div className="mb-6 bg-gray-900 rounded-lg p-4 border border-gray-800">
+      <div className="mb-6 bg-gray-900 rounded-lg p-4 border border-gray-800 space-y-3">
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-gray-400 text-sm font-medium">Filter by labels:</span>
+          <span className="text-gray-400 text-sm font-medium min-w-[110px]">Filter by labels:</span>
           {allLabels.map(label => (
             <button
               key={label.name}
@@ -253,15 +272,43 @@ export default function KanbanBoard({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
           </button>
-          {selectedLabels.length > 0 && (
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-gray-400 text-sm font-medium min-w-[110px]">Filter by assignee:</span>
+          {users.map(user => (
+            <button
+              key={user.id}
+              onClick={() => toggleAssignee(user.id)}
+              className={`px-3 py-1.5 text-xs rounded transition-all ${
+                selectedAssignees.includes(user.id)
+                  ? 'bg-blue-600 text-white ring-2 ring-white/50'
+                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700'
+              }`}
+            >
+              {user.name}
+            </button>
+          ))}
+          <button
+            onClick={() => toggleAssignee('unassigned')}
+            className={`px-3 py-1.5 text-xs rounded transition-all ${
+              selectedAssignees.includes('unassigned')
+                ? 'bg-gray-600 text-white ring-2 ring-white/50'
+                : 'bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700'
+            }`}
+          >
+            Unassigned
+          </button>
+        </div>
+        {hasActiveFilters && (
+          <div className="flex">
             <button
               onClick={clearFilters}
-              className="ml-2 px-3 py-1.5 text-xs rounded bg-gray-700 text-white hover:bg-gray-600 transition-colors"
+              className="px-3 py-1.5 text-xs rounded bg-gray-700 text-white hover:bg-gray-600 transition-colors"
             >
-              Clear filters
+              Clear all filters
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Add Label Modal */}
